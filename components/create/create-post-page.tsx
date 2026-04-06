@@ -7,6 +7,8 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { MobileNav } from '@/components/layout/mobile-nav'
 import { RichEditor } from '@/components/create/rich-editor'
+import { PostCard } from '@/components/feed/post-card'
+import { postFromMarkdownBody } from '@/lib/parse-post'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -226,8 +228,35 @@ export function CreatePostPageClient({
                 placeholder="Düşüncelerini, öğrendiklerini veya notlarını paylaş…"
               />
             ) : (
-              <div className="min-h-[300px] rounded-lg border border-border bg-card p-4 text-sm whitespace-pre-wrap">
-                {content || '—'}
+              <div className="pointer-events-none opacity-95 mt-4">
+                {(() => {
+                  const parsed = postFromMarkdownBody(content, 'mixed');
+                  const previewPost = {
+                    id: 'preview',
+                    author: {
+                      id: sessionUser?.id || 'demo',
+                      name: sessionUser?.name || 'Kullanıcı',
+                      username: sessionUser?.username || 'kullanici',
+                      avatar: sessionUser?.avatar || '',
+                      bio: '',
+                      university: '',
+                      department: '',
+                      followers: 0,
+                      following: 0,
+                      posts: 0
+                    },
+                    ...parsed,
+                    likes: 0,
+                    comments: 0,
+                    reposts: 0,
+                    isLiked: false,
+                    isReposted: false,
+                    isSaved: false,
+                    createdAt: 'Şimdi',
+                    tags: tags
+                  };
+                  return <PostCard post={previewPost} />;
+                })()}
               </div>
             )}
 

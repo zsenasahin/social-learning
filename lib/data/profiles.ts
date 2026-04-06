@@ -11,7 +11,29 @@ export async function getCurrentProfileRow(): Promise<ProfileRow | null> {
   if (!user) return null
   const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
   if (error) throw error
-  return data as ProfileRow | null
+  if (data) return data as ProfileRow
+
+  // Fallback: If auth user exists but profile row missing, create one
+  const emailPrefix = user.email ? user.email.split('@')[0] : `user_${Math.floor(Math.random() * 10000)}`
+  const baseUsername = emailPrefix.replace(/[^a-zA-Z0-9_]/g, '')
+  const fallbackProfile = {
+    id: user.id,
+    display_name: user.user_metadata?.display_name || emailPrefix,
+    username: `${baseUsername}_${Math.floor(Math.random() * 1000)}`,
+    avatar_url: user.user_metadata?.avatar_url || '/placeholder.svg'
+  }
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from('profiles')
+    .insert([fallbackProfile])
+    .select('*')
+    .maybeSingle()
+
+  if (insertErr || !inserted) {
+    console.error("DEBUG SUPABASE PROFILE INSERT:", insertErr, "Inserted:", inserted)
+    return null
+  }
+  return inserted as ProfileRow
 }
 
 export async function getProfileByUsername(username: string): Promise<ProfileRow | null> {
@@ -108,7 +130,7 @@ export async function fetchFollowingList(): Promise<User[]> {
 
   if (error) throw error
   const rows = (data || [])
-    .map((r) => r.following as ProfileRow | null)
+    .map((r) => (Array.isArray(r.following) ? r.following[0] : r.following) as unknown as ProfileRow | null)
     .filter(Boolean) as ProfileRow[]
 
   const out: User[] = []

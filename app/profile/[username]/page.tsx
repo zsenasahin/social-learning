@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getProfileByUsername, mapProfileRowToUserWithCounts, getCurrentProfileRow } from '@/lib/data/profiles'
 import { fetchPostsByAuthor, fetchLikedPostsForUser } from '@/lib/data/posts'
 import { fetchSeriesByAuthor } from '@/lib/data/series'
-import { MapPin, Calendar, Link as LinkIconLucide, Grid3X3, BookOpen, Heart } from 'lucide-react'
+import { MapPin, Calendar, Link as LinkIconLucide } from 'lucide-react'
 import { ProfileTabs } from '@/components/profile/profile-tabs'
 import { FollowButton } from '@/components/profile/follow-button'
 import { ProfileEditButton } from '@/components/profile/profile-edit-button'
@@ -126,11 +126,6 @@ export default async function UserProfilePage({ params }: Props) {
             posts={userPosts}
             events={userEvents}
             likedPosts={likedPosts}
-            tabIcons={{
-              posts: Grid3X3,
-              events: BookOpen,
-              likes: Heart,
-            }}
           />
         </main>
       </div>

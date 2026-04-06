@@ -18,6 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useSessionUser } from '@/components/session-context'
+import { LogoutButton } from '@/components/auth/logout-button'
 
 const navigation = [
   { name: 'Ana Sayfa', href: '/', icon: Home },
@@ -74,20 +75,22 @@ export function Sidebar() {
 
         <div className="border-t border-border p-4">
           {user ? (
-            <Link
-              href={`/profile/${user.username}`}
-              className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary"
-            >
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>{user.name[0]}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
-              </div>
-              <Settings className="h-4 w-4 text-muted-foreground" />
-            </Link>
+            <div className="flex items-center gap-1 p-2">
+              <Link
+                href={`/profile/${user.username}`}
+                className="flex flex-1 items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary truncate"
+              >
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback>{user.name[0]}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                </div>
+              </Link>
+              <LogoutButton />
+            </div>
           ) : (
             <Link
               href="/auth/login"

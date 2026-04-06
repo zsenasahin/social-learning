@@ -31,7 +31,7 @@ export async function fetchCommentsForPost(postId: string): Promise<Comment[]> {
   if (error) throw error
 
   return (data || []).map((row) => {
-    const author = row.author as ProfileRow
+    const author = (Array.isArray(row.author) ? row.author[0] : row.author) as unknown as ProfileRow
     return {
       id: row.id,
       author: mapProfileToUser(author),

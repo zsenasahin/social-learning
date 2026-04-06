@@ -85,7 +85,7 @@ export async function fetchPublicPosts(limit = 50) {
   if (pubErr) throw pubErr
 
   type Row = PostRow & { visibility?: string }
-  let merged: Row[] = [...((publicPosts || []) as Row[])]
+  let merged: Row[] = [...((publicPosts || []) as unknown as Row[])]
 
   if (user) {
     const { data: follows } = await supabase
@@ -103,7 +103,7 @@ export async function fetchPublicPosts(limit = 50) {
         .order('created_at', { ascending: false })
         .limit(limit)
       if (foErr) throw foErr
-      merged = merged.concat((followerOnly || []) as Row[])
+      merged = merged.concat((followerOnly || []) as unknown as Row[])
     }
 
     const { data: ownPrivate, error: prErr } = await supabase
@@ -114,7 +114,7 @@ export async function fetchPublicPosts(limit = 50) {
       .order('created_at', { ascending: false })
       .limit(limit)
     if (prErr) throw prErr
-    merged = merged.concat((ownPrivate || []) as Row[])
+    merged = merged.concat((ownPrivate || []) as unknown as Row[])
   }
 
   const byId = new Map<string, Row>()

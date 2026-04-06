@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Check, Clock, Circle } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
@@ -90,7 +92,11 @@ export function PostCard({ post }: PostCardProps) {
               <span className="text-sm text-muted-foreground">{post.createdAt}</span>
             </div>
 
-            <p className="mt-2 text-foreground leading-relaxed whitespace-pre-wrap">{post.content}</p>
+            <div className="mt-2 text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mb-2 prose-headings:mt-4 prose-a:text-primary hover:prose-a:underline prose-blockquote:border-l-2 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-li:my-0.5">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {post.content}
+              </ReactMarkdown>
+            </div>
 
             {post.images && post.images.length > 0 && (
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -102,16 +108,6 @@ export function PostCard({ post }: PostCardProps) {
               </div>
             )}
 
-            {post.contentType === 'code' && post.codeContent && (
-              <div className="mt-3 overflow-hidden rounded-lg border border-border bg-muted">
-                <div className="flex items-center justify-between border-b border-border bg-secondary/50 px-4 py-2">
-                  <span className="text-xs font-medium text-muted-foreground uppercase">{post.codeLanguage}</span>
-                </div>
-                <pre className="overflow-x-auto p-4 text-sm">
-                  <code className="font-mono text-foreground">{post.codeContent}</code>
-                </pre>
-              </div>
-            )}
 
             {post.contentType === 'roadmap' && post.roadmapSteps && (
               <div className="mt-4 space-y-3">
@@ -148,35 +144,6 @@ export function PostCard({ post }: PostCardProps) {
               </div>
             )}
 
-            {post.contentType === 'table' && post.tableData && (
-              <div className="mt-3 overflow-x-auto rounded-lg border border-border">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-secondary/50">
-                      {post.tableData.headers.map((header, i) => (
-                        <th
-                          key={i}
-                          className="px-4 py-2 text-left text-sm font-medium text-foreground border-b border-border"
-                        >
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {post.tableData.rows.map((row, i) => (
-                      <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/30">
-                        {row.map((cell, j) => (
-                          <td key={j} className="px-4 py-2 text-sm text-muted-foreground">
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
 
             {post.tags && post.tags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">

@@ -1,22 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { 
   Bold, 
   Italic, 
   Code, 
   List, 
   ListOrdered, 
-  Image, 
-  Table, 
+  Image as ImageIcon, 
+  Table as TableIcon, 
   GitBranch,
   Link2,
   Quote,
   Heading1,
   Heading2,
-  FileCode
+  FileCode,
+  UploadCloud,
+  Link as LinkIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 interface RichEditorProps {
@@ -25,96 +35,237 @@ interface RichEditorProps {
   placeholder?: string
 }
 
-const toolbarItems = [
-  { icon: Bold, label: 'Kalin', action: 'bold' },
-  { icon: Italic, label: 'Italik', action: 'italic' },
-  { icon: Heading1, label: 'Baslik 1', action: 'h1' },
-  { icon: Heading2, label: 'Baslik 2', action: 'h2' },
-  { type: 'separator' },
-  { icon: Code, label: 'Satir Ici Kod', action: 'inlineCode' },
-  { icon: FileCode, label: 'Kod Blogu', action: 'codeBlock' },
-  { icon: Quote, label: 'Alinti', action: 'quote' },
-  { type: 'separator' },
-  { icon: List, label: 'Madde Listesi', action: 'bulletList' },
-  { icon: ListOrdered, label: 'Numarali Liste', action: 'orderedList' },
-  { type: 'separator' },
-  { icon: Table, label: 'Tablo', action: 'table' },
-  { icon: GitBranch, label: 'Yol Haritasi', action: 'roadmap' },
-  { icon: Image, label: 'Resim', action: 'image' },
-  { icon: Link2, label: 'Link', action: 'link' },
-]
-
 export function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
-  const [activeFormats, setActiveFormats] = useState<string[]>([])
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [imageDialogOpen, setImageDialogOpen] = useState(false)
+  const [imageUrl, setImageUrl] = useState('')
+  const [imageAlt, setImageAlt] = useState('')
+  const [uploading, setUploading] = useState(false)
+
+  const [tableDialogOpen, setTableDialogOpen] = useState(false)
+  const [tableRows, setTableRows] = useState(3)
+  const [tableCols, setTableCols] = useState(3)
+
+  const insertText = (before: string, after: string = '', defaultText: string = '') => {
+    if (!textareaRef.current) {
+      onChange(value + before + defaultText + after)
+      return
+    }
+    const textarea = textareaRef.current
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    
+    const selectedText = value.substring(start, end) || defaultText
+    const newText = value.substring(0, start) + before + selectedText + after + value.substring(end)
+    
+    onChange(newText)
+    
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length)
+    }, 0)
+  }
 
   const handleToolClick = (action: string) => {
-    // Toggle format state for visual feedback
-    if (activeFormats.includes(action)) {
-      setActiveFormats(activeFormats.filter(f => f !== action))
-    } else {
-      setActiveFormats([...activeFormats, action])
-    }
-
-    // Insert markdown syntax
-    const insertions: Record<string, string> = {
-      bold: '**metin**',
-      italic: '*metin*',
-      h1: '\n# Baslik\n',
-      h2: '\n## Alt Baslik\n',
-      inlineCode: '`kod`',
-      codeBlock: '\n```javascript\n// kodunuz buraya\n```\n',
-      quote: '\n> Alinti metni\n',
-      bulletList: '\n- Madde 1\n- Madde 2\n- Madde 3\n',
-      orderedList: '\n1. Madde 1\n2. Madde 2\n3. Madde 3\n',
-      table: '\n| Baslik 1 | Baslik 2 | Baslik 3 |\n|----------|----------|----------|\n| Deger 1  | Deger 2  | Deger 3  |\n',
-      roadmap: '\n[ROADMAP]\n1. Adim 1 - Aciklama | completed\n2. Adim 2 - Aciklama | in-progress\n3. Adim 3 - Aciklama | upcoming\n[/ROADMAP]\n',
-      image: '\n![Resim aciklamasi](url)\n',
-      link: '[Link metni](url)',
-    }
-
-    const insertion = insertions[action]
-    if (insertion) {
-      onChange(value + insertion)
+    switch(action) {
+      case 'bold': insertText('**', '**', 'kalın metin'); break;
+      case 'italic': insertText('*', '*', 'eğik metin'); break;
+      case 'h1': insertText('\n# ', '\n', 'Başlık 1'); break;
+      case 'h2': insertText('\n## ', '\n', 'Başlık 2'); break;
+      case 'inlineCode': insertText('`', '`', 'kod'); break;
+      case 'codeBlock': insertText('\n```javascript\n', '\n```\n', '// kod blogu'); break;
+      case 'quote': insertText('\n> ', '\n', 'Alıntı'); break;
+      case 'bulletList': insertText('\n- ', '\n', 'Madde'); break;
+      case 'orderedList': insertText('\n1. ', '\n', 'Madde'); break;
+      case 'roadmap': insertText('\n[ROADMAP]\n1. Adım 1 | completed\n2. Adım 2 | in-progress\n[/ROADMAP]\n', ''); break;
+      case 'link': insertText('[', '](https://)', 'Link Metni'); break;
+      case 'image': setImageDialogOpen(true); break;
+      case 'table': setTableDialogOpen(true); break;
     }
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      if (!res.ok) throw new Error('Bilinmeyen hata')
+      const data = await res.json()
+      if (data.url) {
+        insertText(`\n![${file.name}](${data.url})\n`, '')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Resim yüklerken bir hata oluştu.')
+    } finally {
+      setUploading(false)
+      setImageDialogOpen(false)
+    }
+  }
+
+  const insertImageUrl = () => {
+    if (!imageUrl) return
+    insertText(`\n![${imageAlt || 'Resim'}](${imageUrl})\n`, '')
+    setImageUrl('')
+    setImageAlt('')
+    setImageDialogOpen(false)
+  }
+
+  const insertTable = () => {
+    let table = '\n'
+    // Header
+    for(let i=1; i<=tableCols; i++) table += `| Başlık ${i} `
+    table += '|\n'
+    // Separator
+    for(let i=1; i<=tableCols; i++) table += '|---'
+    table += '|\n'
+    // Rows
+    for(let r=1; r<=tableRows; r++) {
+      for(let i=1; i<=tableCols; i++) table += `| Veri `
+      table += '|\n'
+    }
+    insertText(table, '')
+    setTableDialogOpen(false)
+  }
+
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
+    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+      {/* Orijinal input'u gizleyip dosyayı tetikliyoruz */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileUpload} 
+        accept="image/*" 
+        className="hidden" 
+      />
+
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-border bg-secondary/30 p-2">
-        {toolbarItems.map((item, index) => {
-          if (item.type === 'separator') {
-            return <div key={index} className="h-6 w-px bg-border mx-1" />
-          }
-          
-          const Icon = item.icon!
-          const isActive = activeFormats.includes(item.action!)
-          
-          return (
-            <button
-              key={item.action}
-              onClick={() => handleToolClick(item.action!)}
-              title={item.label}
-              className={cn(
-                'flex h-8 w-8 items-center justify-center rounded transition-colors',
-                isActive 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-            </button>
-          )
-        })}
+      <div className="flex flex-wrap items-center gap-1 border-b border-border bg-secondary/20 p-2">
+        <ToolButton icon={Bold} label="Kalın" onClick={() => handleToolClick('bold')} />
+        <ToolButton icon={Italic} label="İtalik" onClick={() => handleToolClick('italic')} />
+        <div className="w-px h-5 bg-border mx-1" />
+        <ToolButton icon={Heading1} label="Başlık 1" onClick={() => handleToolClick('h1')} />
+        <ToolButton icon={Heading2} label="Başlık 2" onClick={() => handleToolClick('h2')} />
+        <div className="w-px h-5 bg-border mx-1" />
+        <ToolButton icon={Code} label="Satır İçi Kod" onClick={() => handleToolClick('inlineCode')} />
+        <ToolButton icon={FileCode} label="Kod Bloğu" onClick={() => handleToolClick('codeBlock')} />
+        <ToolButton icon={Quote} label="Alıntı" onClick={() => handleToolClick('quote')} />
+        <div className="w-px h-5 bg-border mx-1" />
+        <ToolButton icon={List} label="Madde İmi" onClick={() => handleToolClick('bulletList')} />
+        <ToolButton icon={ListOrdered} label="Numaralı Liste" onClick={() => handleToolClick('orderedList')} />
+        <ToolButton icon={GitBranch} label="Yol Haritası" onClick={() => handleToolClick('roadmap')} />
+        <div className="w-px h-5 bg-border mx-1" />
+        <ToolButton icon={Link2} label="Bağlantı" onClick={() => handleToolClick('link')} />
+        <ToolButton icon={ImageIcon} label="Resim Ekle" onClick={() => handleToolClick('image')} />
+        <ToolButton icon={TableIcon} label="Tablo Oluştur" onClick={() => handleToolClick('table')} />
       </div>
 
-      {/* Editor */}
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="min-h-[300px] w-full resize-none bg-transparent p-4 text-foreground placeholder:text-muted-foreground focus:outline-none font-mono text-sm leading-relaxed"
+        className="min-h-[350px] w-full resize-y bg-transparent p-4 text-foreground placeholder:text-muted-foreground focus:outline-none font-sans text-[15px] leading-relaxed"
       />
+
+      {/* Resim Ekleme Dialog */}
+      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Resim Ekle</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6">
+            <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-lg bg-secondary/20 hover:bg-secondary/40 transition-colors">
+              <Button 
+                variant="secondary" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="gap-2"
+              >
+                {uploading ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <UploadCloud className="h-4 w-4" />
+                )}
+                Bilgisayardan Yükle
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">PNG, JPG veya GIF</p>
+            </div>
+            
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-border"></div>
+              <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs uppercase">veya URL ile yönlendir</span>
+              <div className="flex-grow border-t border-border"></div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>Resim Linki (URL)</Label>
+                <div className="relative flex items-center">
+                  <LinkIcon className="h-4 w-4 text-muted-foreground absolute left-3" />
+                  <Input 
+                    placeholder="https://..." 
+                    value={imageUrl} 
+                    onChange={e => setImageUrl(e.target.value)} 
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Açıklama (Opsiyonel)</Label>
+                <Input placeholder="Görsel açıklaması..." value={imageAlt} onChange={e => setImageAlt(e.target.value)} />
+              </div>
+              <Button onClick={insertImageUrl} disabled={!imageUrl} className="w-full">
+                URL'den Ekle
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tablo Ekleme Dialog */}
+      <Dialog open={tableDialogOpen} onOpenChange={setTableDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Tablo Oluştur</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Satır</Label>
+              <Input type="number" min={1} max={20} value={tableRows} onChange={e => setTableRows(parseInt(e.target.value)||1)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Sütun</Label>
+              <Input type="number" min={1} max={10} value={tableCols} onChange={e => setTableCols(parseInt(e.target.value)||1)} className="col-span-3" />
+            </div>
+            <Button onClick={insertTable} className="mt-2">
+              Tabloyu Ekle
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
+  )
+}
+
+function ToolButton({ icon: Icon, label, onClick }: { icon: any, label: string, onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+    >
+      <Icon className="h-4 w-4" />
+    </button>
   )
 }

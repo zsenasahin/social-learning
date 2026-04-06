@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { postFromMarkdownBody } from '@/lib/parse-post'
+import { getCurrentProfileRow } from '@/lib/data/profiles'
 import type { Post } from '@/lib/types'
 
 export async function createPostAction(input: {
@@ -16,6 +17,10 @@ export async function createPostAction(input: {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız' }
+
+  // Profil satırının mevcut olduğundan emin ol (yoksa otomatik oluşturulur)
+  const profile = await getCurrentProfileRow()
+  if (!profile) return { error: 'Profil oluşturulamadı. Lütfen tekrar giriş yapın.' }
 
   const parsed = postFromMarkdownBody(input.body, 'mixed')
   const contentType: Post['contentType'] = parsed.contentType

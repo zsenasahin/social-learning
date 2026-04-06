@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { LucideIcon } from 'lucide-react'
+import { Grid3X3, BookOpen, Heart } from 'lucide-react'
 import { PostCard } from '@/components/feed/post-card'
 import { EventCard } from '@/components/feed/event-card'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,18 +12,22 @@ import { cn } from '@/lib/utils'
 
 type TabId = 'posts' | 'events' | 'likes'
 
+const tabIcons = {
+  posts: Grid3X3,
+  events: BookOpen,
+  likes: Heart,
+}
+
 export function ProfileTabs({
   isOwn,
   posts,
   events,
   likedPosts,
-  tabIcons,
 }: {
   isOwn: boolean
   posts: Post[]
   events: Event[]
   likedPosts: Post[]
-  tabIcons: Record<TabId, LucideIcon>
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('posts')
 

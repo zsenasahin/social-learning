@@ -76,20 +76,16 @@ export function postFromMarkdownBody(
   if (codeMatch) {
     codeLanguage = codeMatch[1] || 'text'
     codeContent = codeMatch[2].trim()
-    working = working.replace(codeMatch[0], '\n')
   }
 
   let tableData: TableData | undefined
   const tableMatch = working.match(/\n(\|.+\|[\s\S]*?)(?=\n\n|\n```|\[ROADMAP]|$)/)
   if (tableMatch) {
-    const parsed = parseMarkdownTable(tableMatch[1].trim())
-    if (parsed) {
-      tableData = parsed
-      working = working.replace(tableMatch[0], '\n')
-    }
+    tableData = parseMarkdownTable(tableMatch[1].trim()) || undefined
   }
 
-  const images = extractImages(body)
+  const images = extractImages(working)
+  working = working.replace(/!\[[^\]]*]\([^)\s]+\)/g, '')
   const content = working.replace(/\n{3,}/g, '\n\n').trim()
 
   let contentType: Post['contentType'] = fallbackContentType
@@ -100,7 +96,7 @@ export function postFromMarkdownBody(
   else contentType = 'text'
 
   return {
-    content: content || body.trim(),
+    content: content,
     contentType,
     codeLanguage,
     codeContent,
