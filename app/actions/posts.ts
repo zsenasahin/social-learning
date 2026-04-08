@@ -150,3 +150,57 @@ export async function addCommentAction(postId: string, body: string) {
   revalidatePath(`/post/${postId}`)
   return { ok: true }
 }
+
+export async function deletePostAction(postId: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız' }
+
+  // Only the author can delete the post
+  const { error } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', postId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/')
+  revalidatePath('/explore')
+  revalidatePath('/profile')
+  return { ok: true }
+}
+
+export async function editPostAction(
+  postId: string,
+  body: string
+) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız' }
+
+  const text = body.trim()
+  if (!text) return { error: 'Gönderi içeriği boş olamaz' }
+
+  const parsed = postFromMarkdownBody(text, 'mixed')
+  const contentType = parsed.contentType
+
+  const { error } = await supabase
+    .from('posts')
+    .update({
+      body: text,
+      content_type: contentType,
+    })
+    .eq('id', postId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/')
+  revalidatePath('/explore')
+  revalidatePath('/profile')
+  revalidatePath(`/post/${postId}`)
+  return { ok: true }
+}

@@ -46,8 +46,10 @@ const visibilityOptions = [
 
 export function CreatePostPageClient({
   mySeries,
+  initialSeriesId = 'none',
 }: {
   mySeries: { id: string; title: string }[]
+  initialSeriesId?: string
 }) {
   const router = useRouter()
   const sessionUser = useSessionUser()
@@ -58,7 +60,7 @@ export function CreatePostPageClient({
   const [showVisibilityMenu, setShowVisibilityMenu] = useState(false)
   const [isPreview, setIsPreview] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [seriesId, setSeriesId] = useState<string>('none')
+  const [seriesId, setSeriesId] = useState<string>(initialSeriesId)
   const [error, setError] = useState<string | null>(null)
 
   const handleAddTag = (e: React.KeyboardEvent) => {
@@ -206,20 +208,7 @@ export function CreatePostPageClient({
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
-              {contentTypes.slice(1).map((type) => {
-                const Icon = type.icon!
-                return (
-                  <span
-                    key={type.id}
-                    className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-3 py-1.5 text-sm text-muted-foreground"
-                  >
-                    <Icon className="h-4 w-4" />
-                    {type.label}
-                  </span>
-                )
-              })}
-            </div>
+
 
             {!isPreview ? (
               <RichEditor

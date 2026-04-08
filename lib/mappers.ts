@@ -70,6 +70,7 @@ export function mapPostRows(
       id: row.id,
       author: mapProfileToUser(row.author),
       ...parsed,
+      rawBody: row.body,
       likes: likeMap.get(row.id) || 0,
       comments: commentMap.get(row.id) || 0,
       reposts: repostMap.get(row.id) || 0,

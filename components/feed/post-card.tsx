@@ -6,15 +6,25 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Check, Clock, Circle } from 'lucide-react'
+import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Check, Clock, Circle, Trash2, Edit3 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { RichEditor } from '@/components/create/rich-editor'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { Post } from '@/lib/types'
 import {
   togglePostLikeAction,
   togglePostRepostAction,
   togglePostSaveAction,
+  deletePostAction,
+  editPostAction,
 } from '@/app/actions/posts'
 import { useSessionUser } from '@/components/session-context'
 
@@ -31,6 +41,10 @@ export function PostCard({ post }: PostCardProps) {
   const [isReposted, setIsReposted] = useState(post.isReposted)
   const [repostsCount, setRepostsCount] = useState(post.reposts)
   const [isSaved, setIsSaved] = useState(post.isSaved)
+  
+  const [isEditing, setIsEditing] = useState(false)
+  const [editContent, setEditContent] = useState(post.rawBody || post.content)
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
 
   function requireLogin(): boolean {
     if (!sessionUser) {
@@ -38,6 +52,24 @@ export function PostCard({ post }: PostCardProps) {
       return false
     }
     return true
+  }
+
+  function handleDelete() {
+    if (!confirm('Bu paylaşımı silmek istediğinize emin misiniz?')) return
+    startTransition(async () => {
+      await deletePostAction(post.id)
+    })
+  }
+
+  async function handleSaveEdit() {
+    setIsSavingEdit(true)
+    const res = await editPostAction(post.id, editContent)
+    setIsSavingEdit(false)
+    if (res?.error) {
+      alert(res.error)
+    } else {
+      setIsEditing(false)
+    }
   }
 
   function handleLike() {
@@ -92,56 +124,76 @@ export function PostCard({ post }: PostCardProps) {
               <span className="text-sm text-muted-foreground">{post.createdAt}</span>
             </div>
 
-            <div className="mt-2 text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mb-2 prose-headings:mt-4 prose-a:text-primary hover:prose-a:underline prose-blockquote:border-l-2 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-li:my-0.5">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {post.content}
-              </ReactMarkdown>
-            </div>
-
-            {post.images && post.images.length > 0 && (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {post.images.map((src) => (
-                  <div key={src} className="relative aspect-video w-full overflow-hidden rounded-lg border border-border">
-                    <Image src={src} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 400px" />
-                  </div>
-                ))}
+            {isEditing ? (
+              <div className="mt-4">
+                <RichEditor value={editContent} onChange={setEditContent} />
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSavingEdit}>İptal</Button>
+                  <Button onClick={handleSaveEdit} disabled={isSavingEdit}>
+                    {isSavingEdit ? 'Kaydediliyor...' : 'Kaydet'}
+                  </Button>
+                </div>
               </div>
-            )}
-
-
-            {post.contentType === 'roadmap' && post.roadmapSteps && (
-              <div className="mt-4 space-y-3">
-                {post.roadmapSteps.map((step, index) => (
-                  <div key={step.id} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={cn(
-                          'flex h-8 w-8 items-center justify-center rounded-full',
-                          step.status === 'completed' && 'bg-accent text-accent-foreground',
-                          step.status === 'in-progress' && 'bg-primary text-primary-foreground',
-                          step.status === 'upcoming' && 'border-2 border-border bg-secondary text-muted-foreground'
-                        )}
-                      >
-                        {step.status === 'completed' && <Check className="h-4 w-4" />}
-                        {step.status === 'in-progress' && <Clock className="h-4 w-4" />}
-                        {step.status === 'upcoming' && <Circle className="h-4 w-4" />}
+            ) : (
+              <>
+                <div className="mt-2 text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mb-2 prose-headings:mt-4 prose-a:text-primary hover:prose-a:underline prose-blockquote:border-l-2 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-li:my-0.5">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {post.content}
+                  </ReactMarkdown>
+                </div>
+    
+                {post.images && post.images.length > 0 && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {post.images.map((src) => (
+                      <div key={src} className="relative aspect-video w-full overflow-hidden rounded-lg border border-border">
+                        <Image src={src} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 400px" />
                       </div>
-                      {index < post.roadmapSteps!.length - 1 && (
-                        <div
-                          className={cn(
-                            'w-0.5 flex-1 my-1',
-                            step.status === 'completed' ? 'bg-accent' : 'bg-border'
-                          )}
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1 pb-4">
-                      <h4 className="font-medium text-foreground">{step.title}</h4>
-                      <p className="text-sm text-muted-foreground">{step.description}</p>
+                    ))}
+                  </div>
+                )}
+    
+                {post.contentType === 'roadmap' && post.roadmapSteps && (
+                  <div className="mt-8 mb-4 relative max-w-2xl mx-auto">
+                    <div className="absolute left-[23px] top-4 bottom-4 w-1 bg-gradient-to-b from-primary/80 via-primary/40 to-transparent rounded-full" />
+                    <div className="space-y-6">
+                      {post.roadmapSteps.map((step, index) => (
+                        <div key={step.id} className="relative flex items-start gap-6 group">
+                          <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl bg-card border-4 border-background shadow-sm ring-2 ring-primary/20 text-primary font-bold text-lg transition-transform group-hover:scale-110">
+                            {index + 1}
+                          </div>
+                          
+                          <div className="flex-1 bg-secondary/30 border border-border/50 rounded-2xl p-5 hover:bg-secondary/50 transition-colors shadow-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                              <h4 className="font-bold text-foreground text-lg">{step.title}</h4>
+                              <div className="flex items-center gap-2">
+                                {step.difficulty && step.difficulty !== 'beginner' && (
+                                  <span className={cn(
+                                    "px-2.5 py-1 text-xs font-semibold rounded-full",
+                                    step.difficulty === 'intermediate' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-red-500/10 text-red-600 dark:text-red-400"
+                                  )}>
+                                    {step.difficulty === 'intermediate' ? 'Orta' : 'İleri'}
+                                  </span>
+                                )}
+                                {step.duration && (
+                                  <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-primary/10 text-primary flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    {step.duration}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {step.description && (
+                              <p className="text-muted-foreground leading-relaxed text-sm">
+                                {step.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
 
 
@@ -224,12 +276,30 @@ export function PostCard({ post }: PostCardProps) {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {sessionUser?.id === post.author.id && (
+                <>
+                  <DropdownMenuItem onClick={() => setIsEditing(true)} className="cursor-pointer">
+                    <Edit3 className="mr-2 h-4 w-4" />
+                    <span>Gönderiyi Düzenle</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive cursor-pointer">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>Gönderiyi Sil</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>

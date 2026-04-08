@@ -1,6 +1,23 @@
 import type { Post, RoadmapStep, TableData } from '@/lib/types'
 
 function parseRoadmapBlock(raw: string): RoadmapStep[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map((s, i) => ({
+        id: s.id || String(i + 1),
+        title: s.title || '',
+        description: s.desc || s.description || '',
+        status: s.status || 'upcoming',
+        order: i + 1,
+        duration: s.duration,
+        difficulty: s.difficulty
+      }));
+    }
+  } catch (e) {
+    // Fallback to legacy regex parsing
+  }
+
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
   const steps: RoadmapStep[] = []
   let order = 0

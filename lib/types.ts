@@ -17,6 +17,8 @@ export interface RoadmapStep {
   description: string
   status: 'completed' | 'in-progress' | 'upcoming'
   order: number
+  duration?: string
+  difficulty?: 'beginner' | 'intermediate' | 'advanced'
 }
 
 export interface TableData {
@@ -28,6 +30,7 @@ export interface Post {
   id: string
   author: User
   content: string
+  rawBody?: string
   contentType: 'text' | 'code' | 'roadmap' | 'table' | 'mixed'
   codeLanguage?: string
   codeContent?: string

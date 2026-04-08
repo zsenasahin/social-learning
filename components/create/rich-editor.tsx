@@ -16,11 +16,20 @@ import {
   Heading2,
   FileCode,
   UploadCloud,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Trash2,
+  PlusCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -48,6 +57,9 @@ export function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
   const [tableRows, setTableRows] = useState(3)
   const [tableCols, setTableCols] = useState(3)
 
+  const [roadmapDialogOpen, setRoadmapDialogOpen] = useState(false)
+  const [roadmapSteps, setRoadmapSteps] = useState([{ id: crypto.randomUUID(), title: '', desc: '', status: 'upcoming' }])
+
   const insertText = (before: string, after: string = '', defaultText: string = '') => {
     if (!textareaRef.current) {
       onChange(value + before + defaultText + after)
@@ -68,6 +80,33 @@ export function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
     }, 0)
   }
 
+  const insertMultilineText = (prefix: string, isOrdered: boolean = false) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = value.substring(start, end)
+    
+    if (!selectedText) {
+      insertText(`\n${isOrdered ? '1. ' : prefix}`, '\n', 'Madde')
+      return
+    }
+
+    const newText = selectedText
+      .split('\n')
+      .map((line, i) => `${isOrdered ? `${i + 1}. ` : prefix}${line}`)
+      .join('\n')
+
+    const before = value.substring(0, start)
+    const after = value.substring(end)
+    onChange(before + newText + after)
+
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start, start + newText.length)
+    }, 0)
+  }
+
   const handleToolClick = (action: string) => {
     switch(action) {
       case 'bold': insertText('**', '**', 'kalın metin'); break;
@@ -75,11 +114,11 @@ export function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
       case 'h1': insertText('\n# ', '\n', 'Başlık 1'); break;
       case 'h2': insertText('\n## ', '\n', 'Başlık 2'); break;
       case 'inlineCode': insertText('`', '`', 'kod'); break;
-      case 'codeBlock': insertText('\n```javascript\n', '\n```\n', '// kod blogu'); break;
+      case 'codeBlock': insertText('\n```\n', '\n```\n', ''); break;
       case 'quote': insertText('\n> ', '\n', 'Alıntı'); break;
-      case 'bulletList': insertText('\n- ', '\n', 'Madde'); break;
-      case 'orderedList': insertText('\n1. ', '\n', 'Madde'); break;
-      case 'roadmap': insertText('\n[ROADMAP]\n1. Adım 1 | completed\n2. Adım 2 | in-progress\n[/ROADMAP]\n', ''); break;
+      case 'bulletList': insertMultilineText('- ', false); break;
+      case 'orderedList': insertMultilineText('1. ', true); break;
+      case 'roadmap': setRoadmapDialogOpen(true); break;
       case 'link': insertText('[', '](https://)', 'Link Metni'); break;
       case 'image': setImageDialogOpen(true); break;
       case 'table': setTableDialogOpen(true); break;
@@ -134,6 +173,18 @@ export function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
     }
     insertText(table, '')
     setTableDialogOpen(false)
+  }
+
+  const insertRoadmap = () => {
+    const validSteps = roadmapSteps.filter((s) => s.title.trim())
+    if (validSteps.length === 0) {
+      setRoadmapDialogOpen(false)
+      return
+    }
+    const md = `\n[ROADMAP]\n${JSON.stringify(validSteps, null, 2)}\n[/ROADMAP]\n`
+    insertText(md, '')
+    setRoadmapDialogOpen(false)
+    setRoadmapSteps([{ id: crypto.randomUUID(), title: '', desc: '', status: 'upcoming' }])
   }
 
   return (
@@ -253,6 +304,96 @@ export function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
         </DialogContent>
       </Dialog>
 
+      {/* Yol Haritası Ekleme Dialog */}
+      <Dialog open={roadmapDialogOpen} onOpenChange={setRoadmapDialogOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Yol Haritası (Roadmap) Oluştur</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {roadmapSteps.map((step, index) => (
+              <div key={step.id} className="relative border border-border p-4 rounded-lg bg-secondary/10 flex flex-col gap-3">
+                <div className="absolute top-2 right-2">
+                  <button 
+                    onClick={() => {
+                      if(roadmapSteps.length > 1) {
+                         setRoadmapSteps(ps => ps.filter(s => s.id !== step.id))
+                      }
+                    }}
+                    className="p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <span className="w-6 h-6 flex items-center justify-center bg-primary/20 text-primary rounded-full text-xs font-bold">{index + 1}</span>
+                  <div className="flex-1">
+                    <Input 
+                      placeholder="Adım başlığı (Örn: React Temelleri)" 
+                      value={step.title} 
+                      onChange={e => {
+                        const newArr = [...roadmapSteps]
+                        newArr[index].title = e.target.value
+                        setRoadmapSteps(newArr)
+                      }} 
+                    />
+                  </div>
+                </div>
+                <div className="pl-8 flex gap-2 w-full">
+                  <Input 
+                    placeholder="Adım açıklaması (opsiyonel)" 
+                    value={step.desc} 
+                    onChange={e => {
+                      const newArr = [...roadmapSteps]
+                      newArr[index].desc = e.target.value
+                      setRoadmapSteps(newArr)
+                    }} 
+                    className="flex-1"
+                  />
+                </div>
+                <div className="pl-8 flex gap-2 w-full">
+                  <Input 
+                    placeholder="Süre (Örn: 2 Hafta)" 
+                    value={(step as any).duration || ''} 
+                    onChange={e => {
+                      const newArr = [...roadmapSteps]
+                      ;(newArr[index] as any).duration = e.target.value
+                      setRoadmapSteps(newArr)
+                    }} 
+                    className="w-[140px]"
+                  />
+                  <Select 
+                    value={(step as any).difficulty || 'beginner'} 
+                    onValueChange={(val: any) => {
+                      const newArr = [...roadmapSteps]
+                      ;(newArr[index] as any).difficulty = val
+                      setRoadmapSteps(newArr)
+                    }}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Zorluk" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Başlangıç</SelectItem>
+                      <SelectItem value="intermediate">Orta Seviye</SelectItem>
+                      <SelectItem value="advanced">İleri Seviye</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ))}
+            <Button 
+              variant="outline" 
+              onClick={() => setRoadmapSteps([...roadmapSteps, { id: crypto.randomUUID(), title: '', desc: '', status: 'upcoming' }])}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> Yeni Adım Ekle
+            </Button>
+            <Button onClick={insertRoadmap} className="mt-2">
+              Yol Haritasını Ekle
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

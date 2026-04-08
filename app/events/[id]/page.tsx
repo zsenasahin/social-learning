@@ -10,7 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { EventFollowClient } from '@/components/feed/event-follow-client'
 import { PostCard } from '@/components/feed/post-card'
-
+import { getSessionUserForLayout } from '@/lib/session-user'
+import { PlusCircle } from 'lucide-react'
 type Props = { params: Promise<{ id: string }> }
 
 export default async function EventDetailPage({ params }: Props) {
@@ -19,6 +20,8 @@ export default async function EventDetailPage({ params }: Props) {
   if (!event) notFound()
 
   const postsInSeries = await fetchPostsBySeriesId(id, 80)
+  const sessionUser = await getSessionUserForLayout()
+  const isOwner = sessionUser?.id === event.author.id
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,13 +52,27 @@ export default async function EventDetailPage({ params }: Props) {
             <EventFollowClient seriesId={event.id} initialFollowing={event.isFollowing ?? false} />
           </div>
 
-          <h2 className="mt-10 text-lg font-semibold text-foreground">Serideki gönderiler</h2>
+          <div className="mt-10 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Serideki gönderiler</h2>
+            {isOwner && (
+              <Button size="sm" className="gap-2" asChild>
+                <Link href={`/create?seriesId=${event.id}`}>
+                  <PlusCircle className="h-4 w-4" />
+                  Bu seriye içerik ekle
+                </Link>
+              </Button>
+            )}
+          </div>
           <div className="mt-4 space-y-4">
             {postsInSeries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Bu seriye bağlı gönderi yok. Gönderi oluştururken seri bağlantısı yakında eklenebilir; şimdilik
-                gönderileri seriye SQL veya Supabase panelinden `series_id` ile ilişkilendirebilirsin.
-              </p>
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card py-12 text-center">
+                <p className="text-muted-foreground mb-4">Bu eğitim serisinde henüz içerik bulunmuyor.</p>
+                {isOwner && (
+                  <Button asChild>
+                    <Link href={`/create?seriesId=${event.id}`}>İlk içeriği oluştur</Link>
+                  </Button>
+                )}
+              </div>
             ) : (
               postsInSeries.map((p) => <PostCard key={p.id} post={p} />)
             )}
